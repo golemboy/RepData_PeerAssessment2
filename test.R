@@ -13,17 +13,18 @@ trim <- function (x) gsub("^\\s+|\\s+$", "", x)
 
 #PROPDMGEXP : A multiplier where Hundred (H), Thousand (K), Million (M), Billion (B)
 #CROPDMGEXP : A multiplier where Hundred (H), Thousand (K), Million (M), Billion (B)
-#multiplier<-function(x) {
-#  m <- hash()
-#  keys<- sort(unique(x))
-#  .set(m, keys, rep(0, length(keys)))
-#  .set(m, "H",100)
-#  .set(m, "K",1000)
-#  .set(m, "M",10^6)
-#  .set(m, "B",10^9)
-#  
-#  return m[[if (is.na(x)) 0 else toupper(x)]]
-#}
+multiplier <- function(x) {
+  m <- hash()
+  clear(m)
+  keys<- sort(unique(x))
+  .set(m, keys, rep(0, length(keys)))
+  .set(m, "H",100)
+  .set(m, "K",1000)
+  .set(m, "M",10^6)
+  .set(m, "B",10^9)
+  
+  m[[if (is.na(x)) 0 else toupper(x)]]
+}
 
 #require("data.table")
 urlfile <- "http://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
