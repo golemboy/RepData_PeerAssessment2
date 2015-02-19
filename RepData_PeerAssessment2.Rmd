@@ -10,7 +10,7 @@ babla
 ```{r setoptions, echo=TRUE, message = FALSE, warning = FALSE}
 library("knitr") 
 #set general options
-opts_chunk$set(echo=TRUE, message = FALSE, warning = FALSE, fig.height=6, fig.width=12, fig.path='figure/', cache.path='cache/')
+opts_chunk$set(echo=TRUE, message = FALSE, warning = FALSE, fig.height=10, fig.width=12, fig.path='figure/', cache.path='cache/')
 ```
 
 ```{r library}
@@ -72,11 +72,11 @@ There are ``r format(num_rows, big.mark=" ")`` observations and ``r num_cols`` c
 
 ### Cleaning data
 ```{r clean1, cache=TRUE}
-##eliminate row with no event
+##eliminate rows with no event
 data <- subset(data, FATALITIES > 0 | INJURIES > 0 | PROPDMG > 0 | CROPDMG > 0)
 
 ##keep usefull columns
-data <- data[,c("BGN_DATE","STATE","EVTYPE","FATALITIES","INJURIES","PROPDMG","PROPDMGEXP","CROPDMG","CROPDMGEXP")]
+data <- data[,c("BGN_DATE","EVTYPE","FATALITIES","INJURIES","PROPDMG","PROPDMGEXP","CROPDMG","CROPDMGEXP")]
 
 ##extract year
 data$YEAR <- year(mdy_hms(data$BGN_DATE, truncated = 3))
@@ -109,6 +109,7 @@ data_dim
 ```
 Based on the above histogram, the number of events significatly change (10 000 observations) arround ``r min_year``. We decided to subset and get ``r format(dim(data)[1], big.mark=" ")`` observations.
 
+According to the Storm Data Event Table, principals events type are renamed.
 ```{r clean3}
 ##cleanig events type
 data$EVTYPE <- toupper(tolower(data$EVTYPE))
@@ -140,23 +141,24 @@ csvCPIfile <- "CPI_USA.csv"
 if (!file.exists(zipfile))
   download.file(urlfile, destfile=zipfile)
 
-##read csv
 ##read CPI CSV file
 us_cpi <- read.csv(csvCPIfile)
 
-#aggregate by year
+##aggregate by year
 us_cpi$YEAR <- year(ymd(us_cpi$Date))
 agg_us_cpi <- ddply(us_cpi,.(YEAR), summarise, CPIm=mean(CPI))
 
-#duplicate CPI data and merge with 1 year gap
+##duplicate CPI data and merge with 1 year gap
 agg_us_cpi_1 <- agg_us_cpi[-1,]
 agg_us_cpi_1$YEAR <- agg_us_cpi_1$YEAR - 1
 colnames(agg_us_cpi_1)[2] <- "CPIm_1"
 agg_us_cpi <- merge(x= agg_us_cpi, y = agg_us_cpi_1, by.x = "YEAR")
+
+##Calculate inflation rate 
 agg_us_cpi$rates <- (agg_us_cpi$CPIm_1 - agg_us_cpi$CPIm)/agg_us_cpi$CPIm * 100
 
+##keep only rate and year column
 us_rates <- agg_us_cpi[,c(1,4)]
-
 
 ##estimate coef for damage
 coef_propdmg <- data.frame(PROPDMGEXP=c("H","K","M","B","+","-","?",as.character(0:8)),
@@ -169,7 +171,7 @@ coef_cropdmg <- data.frame(CROPDMGEXP=c("H","K","M","B","+","-","?",as.character
 data<- merge(x = data, y = coef_propdmg, by = "PROPDMGEXP", all.x = TRUE)
 data<- merge(x = data, y = coef_cropdmg, by = "CROPDMGEXP", all.x = TRUE)
 
-##merge with us inflation rates
+##merge with inflation rates
 data<- merge(x = data, y = us_rates, by = "YEAR", all.x = TRUE)
 ```
 
@@ -191,11 +193,16 @@ t
 Melt the dataset and produce an histogram of the 10 most harmful types of events.
 ```{r plot1}
 m<- melt(t)
+
+brks <- pretty(range(m$value), n = nclass.FD(m$value), min.n = 1)
+bwidth <- brks[2]-brks[1]
+
 harm <- ggplot(data = m,aes(x=EVTYPE, y=value, fill=factor(variable)), color=factor(variable)) + 
-  stat_summary(fun.y = sum, position = position_dodge(), geom = "bar") +
+  stat_summary(fun.y = sum, position = position_dodge(), geom = "bar", binwidth=bwidth) +
   theme(axis.text.x = element_text(angle = 45,hjust = 1)) +
   ylab("Number of injuries / fatalities") + xlab("Event type")+
-  guides(fill=guide_legend(title=NULL))
+  guides(fill=guide_legend(title=NULL))+
+  ggtitle("Total injuries and fatalities by Storm event in US between 1995 and 2011")
 harm
 ```
 Based on the above histogram, Tornado cause the most human damage.
@@ -216,10 +223,17 @@ t
 Melt the dataset and produce an histogram of the 10 types of events which have the greatest economic consequences
 ```{r plot2}
 m<- melt(t)
+
+brks <- pretty(range(m$value), n = nclass.FD(m$value), min.n = 1)
+bwidth <- brks[2]-brks[1]
+
 eco <- ggplot(data = m,aes(x=EVTYPE, y=value, fill=factor(variable)), color=factor(variable)) + 
-  stat_summary(fun.y = sum, position = position_dodge(), geom = "bar") +
+  stat_summary(fun.y = sum, position = position_dodge(), geom = "bar", binwidth=bwidth) +
   theme(axis.text.x = element_text(angle = 45,hjust = 1)) +
   ylab("Economic damage") + xlab("Event type")+
-  guides(fill=guide_legend(title=NULL))
+  guides(fill=guide_legend(title=NULL)) + 
+  ggtitle("Total property and crop damage by Storm event in US between 1995 and 2011")
 eco
 ```
+
+Based on the above histogram, flood cause most property damage. Drought cause most crop damage. We find that, property damage are more important than crop damage.
