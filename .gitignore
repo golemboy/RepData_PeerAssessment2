@@ -35,3 +35,6 @@ Temporary Items
 /repdata_data_StormData.csv
 /repdata-data-StormData.csv.bz2
 .RData
+/*.csv
+/cache
+/figure
