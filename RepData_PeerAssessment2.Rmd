@@ -174,6 +174,8 @@ data<- merge(x = data, y = us_rates, by = "YEAR", all.x = TRUE)
 ```
 
 ### Question 1 : Across the United States, which types of events are most harmful with respect to population health?
+
+Aggregate fatalities and injuries and show the top 10.
 ```{r prepro1, cache=TRUE}
 ## Aggregate fatalities and injuries and show the top 10
 d <- ddply(data, .(EVTYPE), summarise, 
@@ -186,8 +188,7 @@ t<- head(d, n = 10)
 t
 ```
 
-Aggregate fatalities and injuries and show the top 10.
-
+Melt the dataset and produce an histogram of the 10 most harmful types of events.
 ```{r plot1}
 m<- melt(t)
 harm <- ggplot(data = m,aes(x=EVTYPE, y=value, fill=factor(variable)), color=factor(variable)) + 
@@ -197,10 +198,10 @@ harm <- ggplot(data = m,aes(x=EVTYPE, y=value, fill=factor(variable)), color=fac
   guides(fill=guide_legend(title=NULL))
 harm
 ```
-
 Based on the above histogram, Tornado cause the most human damage.
 
 ### Question 2:Across the United States, which types of events have the greatest economic consequences?
+Aggregate property damage and crop damage and show the top 10.
 ```{r prepro2, cache=TRUE}
 d <- ddply(data, .(EVTYPE), summarise, 
            PROPERTY_DAMAGE = sum(PROPDMG * coef_prop * rates, na.rm = TRUE),
@@ -212,8 +213,7 @@ t<- head(d, n = 10)
 t
 ```
 
-Aggregate fatalities and injuries and show the top 10.
-
+Melt the dataset and produce an histogram of the 10 types of events which have the greatest economic consequences
 ```{r plot2}
 m<- melt(t)
 eco <- ggplot(data = m,aes(x=EVTYPE, y=value, fill=factor(variable)), color=factor(variable)) + 
