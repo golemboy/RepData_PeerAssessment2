@@ -93,7 +93,7 @@ histo
 c<-ddply(data, .(YEAR), summarise, count = length(YEAR) )
 min_year <- min(c[c$count >= 10000,])
 min_year
-max(data$YEAR)
+
 #filter
 data <-subset(data, YEAR >= min_year)
 data_bak <- data

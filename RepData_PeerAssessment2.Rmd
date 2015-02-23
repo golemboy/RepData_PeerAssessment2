@@ -4,7 +4,10 @@ output: html_document
 ---
 
 ## Synopsis
-babla
+The purpose of the analyse is to explore the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database and address the following questions:  
+ 1) Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?  
+ 2) Across the United States, which types of events have the greatest economic consequences?
+
 
 ## Settings
 ```{r setoptions, echo=TRUE, message = FALSE, warning = FALSE}
@@ -26,10 +29,11 @@ require("ggplot2")
 trim <- function (x) gsub("^\\s+|\\s+$", "", x)
 ```
 
-## Data Processing
-### Getting and Loading Data
-From cousera reproductible research course, get the storm data file in a bzip archive format and extract it.
 
+## Data Processing
+### Getting and Loading Data  
+
+From cousera reproductible research course, get the storm data file in a bzip archive format and extract it.
 ```{r get-extract}
 urlfile <- "http://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
 zipfile <- "repdata-data-StormData.csv.bz2"
@@ -41,6 +45,7 @@ if (!file.exists(zipfile))
 if (!file.exists(zipfile))
   bunzip2("repdata-data-StormData.csv.bz2", overwrite=T, remove=F)
 ```
+
 
 The csv file is very large (over 500 MB), few rows are read and a vector off classes is created then the entire csv with colClasses param is read.
 ```{r load, cache=TRUE}
@@ -55,6 +60,7 @@ classes[classes == "logical"] = "character"
 
 data = read.csv(file = csvfile, header = TRUE, na.strings = "", colClasses = classes, stringsAsFactors=FALSE);
 ```
+
 ### First analyse
 
 ```{r first1, cache=TRUE}
@@ -68,9 +74,10 @@ num_cols <- data_dim[2]
 colnames(data)
 ```
 
-There are ``r format(num_rows, big.mark=" ")`` observations and ``r num_cols`` columns.
+There are ``r format(num_rows, big.mark=" ")`` observations and ``r num_cols`` columns.  
 
 ### Cleaning data
+for the purposes of the analysis, We keep only related columns: ``r c("BGN_DATE","EVTYPE","FATALITIES","INJURIES","PROPDMG","PROPDMGEXP","CROPDMG","CROPDMGEXP")``
 ```{r clean1, cache=TRUE}
 ##eliminate rows with no event
 data <- subset(data, FATALITIES > 0 | INJURIES > 0 | PROPDMG > 0 | CROPDMG > 0)
@@ -81,7 +88,7 @@ data <- data[,c("BGN_DATE","EVTYPE","FATALITIES","INJURIES","PROPDMG","PROPDMGEX
 ##extract year
 data$YEAR <- year(mdy_hms(data$BGN_DATE, truncated = 3))
 ````
-After cleaning observation with no events and keep only interresting columns, we extract year from the BGN_DATE column and estimate the number of events by year.
+After cleaning observation with no events and keeping only interresting columns, we extract year from the `BGN_DATE` column and estimate the number of events by year.
 
 ```{r histo1}
 ##histogram of the storm frequency by year in US
@@ -92,9 +99,8 @@ histo <- ggplot(data, aes(x= YEAR)) +
 histo
 ```
 
-
 ```{r clean2}
-##aggregate data and keep the min year where events greater or equal to 10000 
+##aggregate data and keep the min year where number of events greater or equal to 10000 
 c<-ddply(data, .(YEAR), summarise, count = length(YEAR) )
 min_year <- min(c[c$count >= 10000,])
 min_year
@@ -107,9 +113,10 @@ data_dim <- dim(data)
 data_dim
 
 ```
+
 Based on the above histogram, the number of events significatly change (10 000 observations) arround ``r min_year``. We decided to subset and get ``r format(dim(data)[1], big.mark=" ")`` observations.
 
-According to the Storm Data Event Table, principals events type are renamed.
+According to the Storm Data Event Table, principals events type are harmonized.
 ```{r clean3}
 ##cleanig events type
 data$EVTYPE <- toupper(tolower(data$EVTYPE))
@@ -131,35 +138,11 @@ data$EVTYPE[grep("^HAIL", data$EVTYPE)] = "HAIL"
 data$EVTYPE[grepl("HAIL", data$EVTYPE) & data$EVTYPE != "MARINE HAIL"]  = "HAIL"
 ```
 
+
 ## Results
-### Compute inflation rate, property damage coefficient and crop damage coefficient
+### Compute property damage coefficient and crop damage coefficient
+
 ```{r, cache=TRUE}
-csvCPIurl <- "https://www.quandl.com/api/v1/datasets/RATEINF/CPI_USA.csv"
-csvCPIfile <- "CPI_USA.csv"
-
-##downloading CPI CSV
-if (!file.exists(zipfile))
-  download.file(urlfile, destfile=zipfile)
-
-##read CPI CSV file
-us_cpi <- read.csv(csvCPIfile)
-
-##aggregate by year
-us_cpi$YEAR <- year(ymd(us_cpi$Date))
-agg_us_cpi <- ddply(us_cpi,.(YEAR), summarise, CPIm=mean(CPI))
-
-##duplicate CPI data and merge with 1 year gap
-agg_us_cpi_1 <- agg_us_cpi[-1,]
-agg_us_cpi_1$YEAR <- agg_us_cpi_1$YEAR - 1
-colnames(agg_us_cpi_1)[2] <- "CPIm_1"
-agg_us_cpi <- merge(x= agg_us_cpi, y = agg_us_cpi_1, by.x = "YEAR")
-
-##Calculate inflation rate 
-agg_us_cpi$rates <- (agg_us_cpi$CPIm_1 - agg_us_cpi$CPIm)/agg_us_cpi$CPIm * 100
-
-##keep only rate and year column
-us_rates <- agg_us_cpi[,c(1,4)]
-
 ##estimate coef for damage
 coef_propdmg <- data.frame(PROPDMGEXP=c("H","K","M","B","+","-","?",as.character(0:8)),
                            coef_prop=c(100,1000,10^6,10^9,1,0,0,rep(1,9))
@@ -170,10 +153,8 @@ coef_cropdmg <- data.frame(CROPDMGEXP=c("H","K","M","B","+","-","?",as.character
 ##merge coef with data
 data<- merge(x = data, y = coef_propdmg, by = "PROPDMGEXP", all.x = TRUE)
 data<- merge(x = data, y = coef_cropdmg, by = "CROPDMGEXP", all.x = TRUE)
-
-##merge with inflation rates
-data<- merge(x = data, y = us_rates, by = "YEAR", all.x = TRUE)
 ```
+
 
 ### Question 1 : Across the United States, which types of events are most harmful with respect to population health?
 
@@ -205,14 +186,16 @@ harm <- ggplot(data = m,aes(x=EVTYPE, y=value, fill=factor(variable)), color=fac
   ggtitle("Total injuries and fatalities by Storm event in US between 1995 and 2011")
 harm
 ```
-Based on the above histogram, Tornado cause the most human damage.
+
+Based on the above histogram, Tornado causes the most injuries. Excessive Heat cause the most fatalities but Tornado fatalities is very close. We find that, injuries are most important than fatalities.
+
 
 ### Question 2:Across the United States, which types of events have the greatest economic consequences?
 Aggregate property damage and crop damage and show the top 10.
 ```{r prepro2, cache=TRUE}
 d <- ddply(data, .(EVTYPE), summarise, 
-           PROPERTY_DAMAGE = sum(PROPDMG * coef_prop * rates, na.rm = TRUE),
-           CROP_DAMAGE = sum(CROPDMG * coef_crop * rates, na.rm = TRUE),
+           PROPERTY_DAMAGE = sum(PROPDMG * coef_prop, na.rm = TRUE),
+           CROP_DAMAGE = sum(CROPDMG * coef_crop, na.rm = TRUE),
            TOTAL = CROP_DAMAGE + PROPERTY_DAMAGE)
 
 d<-d[order(-d$TOTAL),]
